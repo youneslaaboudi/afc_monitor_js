@@ -9,6 +9,7 @@
     
     window.httpMonitor = {
         requests: [],
+        blockedRequests: 0,
         lastSuccessTime: null,
         displayElement: null,
         updateTimer: null,
@@ -74,6 +75,10 @@
             }
         },
         
+        shouldBlockRequest: function(url) {
+            return url && url.includes('AvailableRegular');
+        },
+        
         interceptRequests: function() {
             const self = this;
             console.log('Setting up request interception...');
@@ -85,10 +90,32 @@
             XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
                 this._method = method;
                 this._url = url;
+                this._shouldBlock = self.shouldBlockRequest(url);
+                
+                if (this._shouldBlock) {
+                    console.log('Blocking XHR request:', url);
+                    self.blockedRequests++;
+                    self.updateDisplay();
+                    return; // Don't call the original open method
+                }
+                
                 return originalXHROpen.apply(this, arguments);
             };
             
             XMLHttpRequest.prototype.send = function(body) {
+                if (this._shouldBlock) {
+                    // Simulate an aborted request
+                    setTimeout(() => {
+                        if (this.onreadystatechange) {
+                            this.readyState = 4;
+                            this.status = 0;
+                            this.statusText = 'Blocked by HTTP Monitor';
+                            this.onreadystatechange();
+                        }
+                    }, 1);
+                    return;
+                }
+                
                 const xhr = this;
                 const startTime = Date.now();
                 
@@ -115,9 +142,20 @@
             const originalFetch = window.fetch;
             if (originalFetch) {
                 window.fetch = function(input, init) {
-                    const startTime = Date.now();
                     const url = typeof input === 'string' ? input : input.url;
                     const method = init && init.method ? init.method : 'GET';
+                    
+                    // Block the request if it matches our criteria
+                    if (self.shouldBlockRequest(url)) {
+                        console.log('Blocking fetch request:', url);
+                        self.blockedRequests++;
+                        self.updateDisplay();
+                        
+                        // Return a rejected promise to simulate a blocked request
+                        return Promise.reject(new Error('Request blocked by HTTP Monitor'));
+                    }
+                    
+                    const startTime = Date.now();
                     
                     return originalFetch.apply(this, arguments)
                         .then(response => {
@@ -162,11 +200,6 @@
         },
         
         logRequest: function(requestData) {
-            // Filter out requests ending with "AvailableRegular"
-            if (requestData.url && requestData.url.includes('AvailableRegular')) {
-                return;
-            }
-            
             console.log('Logging request:', requestData);
             
             // Add timestamp
@@ -195,6 +228,9 @@
             }
             
             let html = '<div style="margin-bottom: 8px; font-weight: bold; color: #00ff00;">HTTP Monitor - Last 5 Requests:</div>';
+            
+            // Display blocked requests count
+            html += `<div style="margin-bottom: 5px; color: #ff6666;">Blocked AvailableRegular requests: ${this.blockedRequests}</div>`;
             
             // Display time since last 200 response
             const timeSinceSuccess = this.getTimeSinceLastSuccess();
@@ -296,7 +332,7 @@
     window.httpMonitor.init();
     
     // Add a way to toggle/destroy the monitor
-    console.log('HTTP Monitor initialized. Use window.httpMonitor.destroy() to remove it.');
+    console.log('HTTP Monitor initialized with request blocking. Use window.httpMonitor.destroy() to remove it.');
     
     // Test the display immediately
     setTimeout(() => {
@@ -305,3 +341,6 @@
         }
     }, 100);
 })();
+
+
+
