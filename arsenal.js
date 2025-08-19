@@ -86,65 +86,92 @@
             // Intercept XMLHttpRequest
             const originalXHROpen = XMLHttpRequest.prototype.open;
             const originalXHRSend = XMLHttpRequest.prototype.send;
+            const originalXHRSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
             
             XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
                 this._method = method;
                 this._url = url;
                 this._shouldBlock = self.shouldBlockRequest(url);
+                this._headers = {};
                 
                 if (this._shouldBlock) {
-                    console.log('Setting up mock XHR for:', url);
-                    self.blockedRequests++;
-                    self.updateDisplay();
-                    
-                    // Set readyState to OPENED (1) so setRequestHeader works
-                    Object.defineProperty(this, 'readyState', { writable: true, value: 1 });
-                    
-                    // Trigger readystatechange event for OPENED state
-                    if (this.onreadystatechange) {
-                        setTimeout(() => this.onreadystatechange(), 0);
-                    }
-                    return;
+                    console.log('Intercepting XHR request for blocking:', url);
+                    // Still call the original open to maintain proper state
+                    // But we'll intercept it at send() level
+                    return originalXHROpen.call(this, method, 'data:text/plain,', async, user, password);
                 }
                 
                 return originalXHROpen.apply(this, arguments);
             };
             
+            XMLHttpRequest.prototype.setRequestHeader = function(name, value) {
+                if (this._shouldBlock) {
+                    // Store headers for blocked requests but don't actually set them
+                    this._headers[name] = value;
+                    return;
+                }
+                return originalXHRSetRequestHeader.apply(this, arguments);
+            };
+            
             XMLHttpRequest.prototype.send = function(body) {
                 if (this._shouldBlock) {
-                    // Simulate a 403 response with JSON body
+                    console.log('Simulating 403 response for XHR:', this._url);
+                    self.blockedRequests++;
+                    self.updateDisplay();
+                    
                     const xhr = this;
+                    
+                    // Immediately simulate the response
                     setTimeout(() => {
-                        // Set up the mock response
-                        Object.defineProperty(xhr, 'readyState', { writable: true, value: 4 });
+                        // Override properties to simulate 403 response
                         Object.defineProperty(xhr, 'status', { writable: true, value: 403 });
                         Object.defineProperty(xhr, 'statusText', { writable: true, value: 'Forbidden' });
-                        Object.defineProperty(xhr, 'responseText', { writable: true, value: '{"response":"block"}' });
-                        Object.defineProperty(xhr, 'response', { writable: true, value: '{"response":"block"}' });
-                        Object.defineProperty(xhr, 'responseType', { writable: true, value: '' });
+                        Object.defineProperty(xhr, 'responseText', { writable: true, value: '["blocked"]' });
+                        Object.defineProperty(xhr, 'response', { writable: true, value: '["blocked"]' });
+                        Object.defineProperty(xhr, 'readyState', { writable: true, value: 4 });
                         
-                        // Set response headers
+                        // Mock response headers
                         xhr.getAllResponseHeaders = function() {
-                            return 'content-type: application/json\r\ncontent-length: 20\r\n';
+                            return 'content-type: application/json\r\ncontent-length: 11\r\n';
                         };
                         xhr.getResponseHeader = function(name) {
                             if (name.toLowerCase() === 'content-type') return 'application/json';
-                            if (name.toLowerCase() === 'content-length') return '20';
+                            if (name.toLowerCase() === 'content-length') return '11';
                             return null;
                         };
                         
-                        // Trigger the readystatechange event for DONE state
+                        // Trigger events
                         if (xhr.onreadystatechange) {
                             xhr.onreadystatechange();
                         }
-                        
-                        // Trigger load event if handler exists
                         if (xhr.onload) {
                             xhr.onload();
                         }
-                    }, 10); // Small delay to simulate network
+                    }, 10);
                     return;
                 }
+                
+                const xhr = this;
+                const startTime = Date.now();
+                
+                const originalOnReadyStateChange = xhr.onreadystatechange;
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4) {
+                        self.logRequest({
+                            method: xhr._method,
+                            url: xhr._url,
+                            status: xhr.status,
+                            responseSize: xhr.responseText ? xhr.responseText.length : 0,
+                            duration: Date.now() - startTime
+                        });
+                    }
+                    if (originalOnReadyStateChange) {
+                        return originalOnReadyStateChange.apply(this, arguments);
+                    }
+                };
+                
+                return originalXHRSend.apply(this, arguments);
+            };
                 
                 const xhr = this;
                 const startTime = Date.now();
@@ -182,12 +209,12 @@
                         self.updateDisplay();
                         
                         // Return a Promise that resolves to a mock 403 response
-                        return Promise.resolve(new Response('{"response":"block"}', {
+                        return Promise.resolve(new Response('["blocked"]', {
                             status: 403,
                             statusText: 'Forbidden',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'Content-Length': '20'
+                                'Content-Length': '11'
                             }
                         }));
                     }
