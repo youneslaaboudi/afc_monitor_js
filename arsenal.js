@@ -115,8 +115,8 @@
                                     'status': { value: 403, writable: false, configurable: true },
                                     'statusText': { value: 'Forbidden', writable: false, configurable: true },
                                     'readyState': { value: 4, writable: false, configurable: true },
-                                    'responseText': { value: '["blocked"]', writable: false, configurable: true },
-                                    'response': { value: '["blocked"]', writable: false, configurable: true }
+                                    'responseText': { value: '{"response":"block"}', writable: false, configurable: true },
+                                    'response': { value: '{"response":"block"}', writable: false, configurable: true }
                                 });
                                 
                                 // Override header methods
@@ -140,7 +140,7 @@
                             } catch (e) {
                                 console.error('Error creating mock XHR response:', e);
                             }
-                        }, 50);
+                        }, 1);
                         
                         return;
                     }
@@ -197,7 +197,7 @@
                                 self.updateDisplay();
                                 
                                 // Return a mock 403 response
-                                return Promise.resolve(new Response('["blocked"]', {
+                                return Promise.resolve(new Response('{"response":"block"}', {
                                     status: 403,
                                     statusText: 'Forbidden',
                                     headers: new Headers({
