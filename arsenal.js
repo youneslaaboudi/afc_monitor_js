@@ -111,17 +111,17 @@
                         Object.defineProperty(xhr, 'readyState', { writable: true, value: 4 });
                         Object.defineProperty(xhr, 'status', { writable: true, value: 403 });
                         Object.defineProperty(xhr, 'statusText', { writable: true, value: 'Forbidden' });
-                        Object.defineProperty(xhr, 'responseText', { writable: true, value: '["blocked"]' });
-                        Object.defineProperty(xhr, 'response', { writable: true, value: '["blocked"]' });
+                        Object.defineProperty(xhr, 'responseText', { writable: true, value: '{"response":"block"}' });
+                        Object.defineProperty(xhr, 'response', { writable: true, value: '{"response":"block"}' });
                         Object.defineProperty(xhr, 'responseType', { writable: true, value: '' });
                         
                         // Set response headers
                         xhr.getAllResponseHeaders = function() {
-                            return 'content-type: application/json\r\ncontent-length: 11\r\n';
+                            return 'content-type: application/json\r\ncontent-length: 21\r\n';
                         };
                         xhr.getResponseHeader = function(name) {
                             if (name.toLowerCase() === 'content-type') return 'application/json';
-                            if (name.toLowerCase() === 'content-length') return '11';
+                            if (name.toLowerCase() === 'content-length') return '21';
                             return null;
                         };
                         
@@ -134,7 +134,7 @@
                         if (xhr.onload) {
                             xhr.onload();
                         }
-                    }, 10); // Small delay to simulate network
+                    }, 1); // Small delay to simulate network
                     return;
                 }
                 
@@ -174,12 +174,12 @@
                         self.updateDisplay();
                         
                         // Return a Promise that resolves to a mock 403 response
-                        return Promise.resolve(new Response('["blocked"]', {
+                        return Promise.resolve(new Response('{"response":"block"}', {
                             status: 403,
                             statusText: 'Forbidden',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'Content-Length': '11'
+                                'Content-Length': '21'
                             }
                         }));
                     }
