@@ -87,7 +87,7 @@
             const originalXHROpen = XMLHttpRequest.prototype.open;
             const originalXHRSend = XMLHttpRequest.prototype.send;
             
-            XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
+            /*XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
                 this._method = method;
                 this._url = url;
                 this._shouldBlock = self.shouldBlockRequest(url);
@@ -100,7 +100,7 @@
                 }
                 
                 return originalXHROpen.apply(this, arguments);
-            };
+            };*/
             
             XMLHttpRequest.prototype.send = function(body) {
                 if (this._shouldBlock) {
