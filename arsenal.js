@@ -87,20 +87,28 @@
             const originalXHROpen = XMLHttpRequest.prototype.open;
             const originalXHRSend = XMLHttpRequest.prototype.send;
             
-            /*XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
+            XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
                 this._method = method;
                 this._url = url;
                 this._shouldBlock = self.shouldBlockRequest(url);
                 
                 if (this._shouldBlock) {
-                    console.log('Blocking XHR request:', url);
+                    console.log('Setting up mock XHR for:', url);
                     self.blockedRequests++;
                     self.updateDisplay();
-                    return; // Don't call the original open method
+                    
+                    // Set readyState to OPENED (1) so setRequestHeader works
+                    Object.defineProperty(this, 'readyState', { writable: true, value: 1 });
+                    
+                    // Trigger readystatechange event for OPENED state
+                    if (this.onreadystatechange) {
+                        setTimeout(() => this.onreadystatechange(), 0);
+                    }
+                    return;
                 }
                 
                 return originalXHROpen.apply(this, arguments);
-            };*/
+            };
             
             XMLHttpRequest.prototype.send = function(body) {
                 if (this._shouldBlock) {
@@ -117,15 +125,15 @@
                         
                         // Set response headers
                         xhr.getAllResponseHeaders = function() {
-                            return 'content-type: application/json\r\ncontent-length: 21\r\n';
+                            return 'content-type: application/json\r\ncontent-length: 20\r\n';
                         };
                         xhr.getResponseHeader = function(name) {
                             if (name.toLowerCase() === 'content-type') return 'application/json';
-                            if (name.toLowerCase() === 'content-length') return '21';
+                            if (name.toLowerCase() === 'content-length') return '20';
                             return null;
                         };
                         
-                        // Trigger the readystatechange event
+                        // Trigger the readystatechange event for DONE state
                         if (xhr.onreadystatechange) {
                             xhr.onreadystatechange();
                         }
@@ -134,7 +142,7 @@
                         if (xhr.onload) {
                             xhr.onload();
                         }
-                    }, 1); // Small delay to simulate network
+                    }, 10); // Small delay to simulate network
                     return;
                 }
                 
@@ -179,7 +187,7 @@
                             statusText: 'Forbidden',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'Content-Length': '21'
+                                'Content-Length': '20'
                             }
                         }));
                     }
