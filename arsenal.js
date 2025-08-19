@@ -104,15 +104,37 @@
             
             XMLHttpRequest.prototype.send = function(body) {
                 if (this._shouldBlock) {
-                    // Simulate an aborted request
+                    // Simulate a 403 response with JSON body
+                    const xhr = this;
                     setTimeout(() => {
-                        if (this.onreadystatechange) {
-                            this.readyState = 4;
-                            this.status = 0;
-                            this.statusText = 'Blocked by HTTP Monitor';
-                            this.onreadystatechange();
+                        // Set up the mock response
+                        Object.defineProperty(xhr, 'readyState', { writable: true, value: 4 });
+                        Object.defineProperty(xhr, 'status', { writable: true, value: 403 });
+                        Object.defineProperty(xhr, 'statusText', { writable: true, value: 'Forbidden' });
+                        Object.defineProperty(xhr, 'responseText', { writable: true, value: '["blocked"]' });
+                        Object.defineProperty(xhr, 'response', { writable: true, value: '["blocked"]' });
+                        Object.defineProperty(xhr, 'responseType', { writable: true, value: '' });
+                        
+                        // Set response headers
+                        xhr.getAllResponseHeaders = function() {
+                            return 'content-type: application/json\r\ncontent-length: 11\r\n';
+                        };
+                        xhr.getResponseHeader = function(name) {
+                            if (name.toLowerCase() === 'content-type') return 'application/json';
+                            if (name.toLowerCase() === 'content-length') return '11';
+                            return null;
+                        };
+                        
+                        // Trigger the readystatechange event
+                        if (xhr.onreadystatechange) {
+                            xhr.onreadystatechange();
                         }
-                    }, 1);
+                        
+                        // Trigger load event if handler exists
+                        if (xhr.onload) {
+                            xhr.onload();
+                        }
+                    }, 10); // Small delay to simulate network
                     return;
                 }
                 
@@ -147,12 +169,19 @@
                     
                     // Block the request if it matches our criteria
                     if (self.shouldBlockRequest(url)) {
-                        console.log('Blocking fetch request:', url);
+                        console.log('Simulating 403 for fetch request:', url);
                         self.blockedRequests++;
                         self.updateDisplay();
                         
-                        // Return a rejected promise to simulate a blocked request
-                        return Promise.reject(new Error('Request blocked by HTTP Monitor'));
+                        // Return a Promise that resolves to a mock 403 response
+                        return Promise.resolve(new Response('["blocked"]', {
+                            status: 403,
+                            statusText: 'Forbidden',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Content-Length': '11'
+                            }
+                        }));
                     }
                     
                     const startTime = Date.now();
@@ -230,7 +259,7 @@
             let html = '<div style="margin-bottom: 8px; font-weight: bold; color: #00ff00;">HTTP Monitor - Last 5 Requests:</div>';
             
             // Display blocked requests count
-            html += `<div style="margin-bottom: 5px; color: #ff6666;">Blocked AvailableRegular requests: ${this.blockedRequests}</div>`;
+            html += `<div style="margin-bottom: 5px; color: #ff6666;">Simulated 403 responses for AvailableRegular: ${this.blockedRequests}</div>`;
             
             // Display time since last 200 response
             const timeSinceSuccess = this.getTimeSinceLastSuccess();
@@ -332,7 +361,7 @@
     window.httpMonitor.init();
     
     // Add a way to toggle/destroy the monitor
-    console.log('HTTP Monitor initialized with request blocking. Use window.httpMonitor.destroy() to remove it.');
+    console.log('HTTP Monitor initialized with 403 response simulation. Use window.httpMonitor.destroy() to remove it.');
     
     // Test the display immediately
     setTimeout(() => {
@@ -341,6 +370,3 @@
         }
     }, 100);
 })();
-
-
-
