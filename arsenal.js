@@ -107,40 +107,74 @@
                         self.blockedRequests++;
                         self.updateDisplay();
                         
-                        // Create a mock response
+                        // Create a mock response with proper state transitions
                         setTimeout(function() {
                             try {
-                                // Define properties that can be overridden
-                                Object.defineProperties(xhr, {
-                                    'status': { value: 403, writable: false, configurable: true },
-                                    'statusText': { value: 'Forbidden', writable: false, configurable: true },
-                                    'readyState': { value: 4, writable: false, configurable: true },
-                                    'responseText': { value: '{"response":"block"}', writable: false, configurable: true },
-                                    'response': { value: '{"response":"block"}', writable: false, configurable: true }
-                                });
-                                
-                                // Override header methods
-                                xhr.getAllResponseHeaders = function() {
-                                    return 'content-type: application/json\r\n';
-                                };
-                                xhr.getResponseHeader = function(name) {
-                                    if (name && name.toLowerCase() === 'content-type') {
-                                        return 'application/json';
-                                    }
-                                    return null;
-                                };
-                                
-                                // Fire events
+                                // Simulate loading state first
+                                Object.defineProperty(xhr, 'readyState', { value: 2, writable: true, configurable: true });
                                 if (typeof xhr.onreadystatechange === 'function') {
                                     xhr.onreadystatechange();
                                 }
-                                if (typeof xhr.onload === 'function') {
-                                    xhr.onload();
-                                }
+                                
+                                // Then headers received
+                                setTimeout(function() {
+                                    Object.defineProperty(xhr, 'readyState', { value: 3, writable: true, configurable: true });
+                                    if (typeof xhr.onreadystatechange === 'function') {
+                                        xhr.onreadystatechange();
+                                    }
+                                    
+                                    // Finally complete response
+                                    setTimeout(function() {
+                                        Object.defineProperties(xhr, {
+                                            'status': { value: 403, writable: false, configurable: true },
+                                            'statusText': { value: 'Forbidden', writable: false, configurable: true },
+                                            'readyState': { value: 4, writable: true, configurable: true },
+                                            'responseText': { value: '{"response":"block"}', writable: false, configurable: true },
+                                            'response': { value: '{"response":"block"}', writable: false, configurable: true }
+                                        });
+                                        
+                                        // Override header methods
+                                        xhr.getAllResponseHeaders = function() {
+                                            return 'content-type: application/json\r\ncontent-length: 20\r\n';
+                                        };
+                                        xhr.getResponseHeader = function(name) {
+                                            if (name && name.toLowerCase() === 'content-type') {
+                                                return 'application/json';
+                                            }
+                                            if (name && name.toLowerCase() === 'content-length') {
+                                                return '20';
+                                            }
+                                            return null;
+                                        };
+                                        
+                                        // Fire final events
+                                        if (typeof xhr.onreadystatechange === 'function') {
+                                            xhr.onreadystatechange();
+                                        }
+                                        if (typeof xhr.onload === 'function') {
+                                            xhr.onload();
+                                        }
+                                        
+                                        // Fire loadend event if it exists
+                                        if (typeof xhr.onloadend === 'function') {
+                                            xhr.onloadend();
+                                        }
+                                        
+                                        // Dispatch events if addEventListener was used
+                                        try {
+                                            if (xhr.dispatchEvent) {
+                                                xhr.dispatchEvent(new Event('load'));
+                                                xhr.dispatchEvent(new Event('loadend'));
+                                            }
+                                        } catch (e) {
+                                            // Events might not be supported in all environments
+                                        }
+                                    }, 10);
+                                }, 10);
                             } catch (e) {
                                 console.error('Error creating mock XHR response:', e);
                             }
-                        }, 1);
+                        }, 20);
                         
                         return;
                     }
@@ -201,7 +235,8 @@
                                     status: 403,
                                     statusText: 'Forbidden',
                                     headers: new Headers({
-                                        'Content-Type': 'application/json'
+                                        'Content-Type': 'application/json',
+                                        'Content-Length': '20'
                                     })
                                 }));
                             }
@@ -381,38 +416,4 @@
                 if (this.updateTimer) {
                     clearInterval(this.updateTimer);
                     this.updateTimer = null;
-                }
                 
-                if (this.displayElement && this.displayElement.parentNode) {
-                    this.displayElement.parentNode.removeChild(this.displayElement);
-                    this.displayElement = null;
-                }
-                
-                // Restore original methods
-                if (this.originalXHR.open) {
-                    XMLHttpRequest.prototype.open = this.originalXHR.open;
-                }
-                if (this.originalXHR.send) {
-                    XMLHttpRequest.prototype.send = this.originalXHR.send;
-                }
-                if (this.originalFetch) {
-                    window.fetch = this.originalFetch;
-                }
-                
-                delete window.httpMonitor;
-                console.log('HTTP Monitor destroyed');
-            } catch (e) {
-                console.error('Error destroying HTTP Monitor:', e);
-            }
-        }
-    };
-    
-    // Initialize the monitor
-    try {
-        window.httpMonitor.init();
-        console.log('HTTP Monitor initialized with 403 response simulation. Use window.httpMonitor.destroy() to remove it.');
-    } catch (e) {
-        console.error('Failed to initialize HTTP Monitor:', e);
-    }
-    
-})();
