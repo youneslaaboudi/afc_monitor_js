@@ -73,32 +73,71 @@
                     self.blockedRequests = self.blockedRequests + 1;
                     self.updateDisplay();
                     
-                    // Create mock response after small delay
+                    // Simulate proper XMLHttpRequest lifecycle
                     setTimeout(function() {
+                        // First set readyState to 2 (headers received)
+                        xhr.readyState = 2;
                         xhr.status = 403;
                         xhr.statusText = 'Forbidden';
-                        xhr.readyState = 4;
-                        xhr.responseText = '{"response":"block"}';
-                        xhr.response = '{"response":"block"}';
-                        
-                        xhr.getAllResponseHeaders = function() {
-                            return 'content-type: application/json';
-                        };
-                        
-                        xhr.getResponseHeader = function(name) {
-                            if (name && name.toLowerCase() === 'content-type') {
-                                return 'application/json';
-                            }
-                            return null;
-                        };
                         
                         if (xhr.onreadystatechange) {
-                            xhr.onreadystatechange();
+                            try {
+                                xhr.onreadystatechange();
+                            } catch (e) {}
                         }
-                        if (xhr.onload) {
-                            xhr.onload();
-                        }
-                    }, 50);
+                        
+                        // Then readyState 3 (loading)
+                        setTimeout(function() {
+                            xhr.readyState = 3;
+                            if (xhr.onreadystatechange) {
+                                try {
+                                    xhr.onreadystatechange();
+                                } catch (e) {}
+                            }
+                            
+                            // Finally readyState 4 (done) with full response
+                            setTimeout(function() {
+                                xhr.readyState = 4;
+                                xhr.responseText = '{"response":"block"}';
+                                xhr.response = '{"response":"block"}';
+                                
+                                // Override response header methods
+                                xhr.getAllResponseHeaders = function() {
+                                    return 'content-type: application/json\r\ncontent-length: 20\r\n';
+                                };
+                                
+                                xhr.getResponseHeader = function(name) {
+                                    if (!name) return null;
+                                    var lowerName = name.toLowerCase();
+                                    if (lowerName === 'content-type') return 'application/json';
+                                    if (lowerName === 'content-length') return '20';
+                                    return null;
+                                };
+                                
+                                // Fire readystatechange event
+                                if (xhr.onreadystatechange) {
+                                    try {
+                                        xhr.onreadystatechange();
+                                    } catch (e) {}
+                                }
+                                
+                                // Fire load event
+                                if (xhr.onload) {
+                                    try {
+                                        xhr.onload();
+                                    } catch (e) {}
+                                }
+                                
+                                // Fire loadend event if it exists
+                                if (xhr.onloadend) {
+                                    try {
+                                        xhr.onloadend();
+                                    } catch (e) {}
+                                }
+                                
+                            }, 10);
+                        }, 10);
+                    }, 20);
                     
                     return;
                 }
