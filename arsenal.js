@@ -81,42 +81,42 @@
                         // Create mock response properties
                         try {
                             Object.defineProperty(xhr, 'status', { 
-                                value: 403, 
+                                value: 200, 
                                 writable: false, 
                                 configurable: true 
                             });
                         } catch (e) {
-                            xhr.status = 403;
+                            xhr.status = 200;
                         }
                         
                         try {
                             Object.defineProperty(xhr, 'statusText', { 
-                                value: 'Forbidden', 
+                                value: 'OK', 
                                 writable: false, 
                                 configurable: true 
                             });
                         } catch (e) {
-                            xhr.statusText = 'Forbidden';
+                            xhr.statusText = 'OK';
                         }
                         
                         try {
                             Object.defineProperty(xhr, 'responseText', { 
-                                value: '{"response":"block"}', 
+                                value: '[]', 
                                 writable: false, 
                                 configurable: true 
                             });
                         } catch (e) {
-                            xhr.responseText = '{"response":"block"}';
+                            xhr.responseText = '[]';
                         }
                         
                         try {
                             Object.defineProperty(xhr, 'response', { 
-                                value: '{"response":"block"}', 
+                                value: '[]', 
                                 writable: false, 
                                 configurable: true 
                             });
                         } catch (e) {
-                            xhr.response = '{"response":"block"}';
+                            xhr.response = '[]';
                         }
                         
                         // Mock readyState as 4 without trying to set it
@@ -132,14 +132,14 @@
                         
                         // Override response header methods
                         xhr.getAllResponseHeaders = function() {
-                            return 'content-type: application/json\r\ncontent-length: 20\r\n';
+                            return 'content-type: application/json\r\ncontent-length: 2\r\n';
                         };
                         
                         xhr.getResponseHeader = function(name) {
                             if (!name) return null;
                             var lowerName = name.toLowerCase();
                             if (lowerName === 'content-type') return 'application/json';
-                            if (lowerName === 'content-length') return '20';
+                            if (lowerName === 'content-length') return '2';
                             return null;
                         };
                         
@@ -207,9 +207,9 @@
                         self.blockedRequests = self.blockedRequests + 1;
                         self.updateDisplay();
                         
-                        return Promise.resolve(new Response('{"response":"block"}', {
-                            status: 403,
-                            statusText: 'Forbidden',
+                        return Promise.resolve(new Response('[]', {
+                            status: 200,
+                            statusText: 'OK',
                             headers: {
                                 'Content-Type': 'application/json'
                             }
@@ -271,7 +271,7 @@
             }
             
             var html = '<div style="margin-bottom:8px;font-weight:bold;color:#00ff00;">HTTP Monitor - Last 5 Requests:</div>';
-            html += '<div style="margin-bottom:5px;color:#ff6666;">Simulated 403 responses for AvailableRegular: ' + this.blockedRequests + '</div>';
+            html += '<div style="margin-bottom:5px;color:#ff6666;">Simulated 200 responses for AvailableRegular: ' + this.blockedRequests + '</div>';
             
             var timeSinceSuccess = this.getTimeSinceLastSuccess();
             html += '<div style="margin-bottom:5px;color:#ffff00;">Time since last 200: ' + timeSinceSuccess + 's</div>';
@@ -356,6 +356,6 @@
     };
     
     window.httpMonitor.init();
-    console.log('HTTP Monitor initialized with 403 response simulation.');
+    console.log('HTTP Monitor initialized with 200 response simulation.');
     
 })();
