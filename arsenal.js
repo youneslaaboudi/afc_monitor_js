@@ -73,71 +73,102 @@
                     self.blockedRequests = self.blockedRequests + 1;
                     self.updateDisplay();
                     
-                    // Simulate proper XMLHttpRequest lifecycle
+                    // Create a completely new XMLHttpRequest object for the mock response
+                    var mockXHR = new XMLHttpRequest();
+                    
+                    // Copy relevant properties and methods to original xhr
                     setTimeout(function() {
-                        // First set readyState to 2 (headers received)
-                        xhr.readyState = 2;
-                        xhr.status = 403;
-                        xhr.statusText = 'Forbidden';
+                        // Create mock response properties
+                        try {
+                            Object.defineProperty(xhr, 'status', { 
+                                value: 403, 
+                                writable: false, 
+                                configurable: true 
+                            });
+                        } catch (e) {
+                            xhr.status = 403;
+                        }
                         
+                        try {
+                            Object.defineProperty(xhr, 'statusText', { 
+                                value: 'Forbidden', 
+                                writable: false, 
+                                configurable: true 
+                            });
+                        } catch (e) {
+                            xhr.statusText = 'Forbidden';
+                        }
+                        
+                        try {
+                            Object.defineProperty(xhr, 'responseText', { 
+                                value: '{"response":"block"}', 
+                                writable: false, 
+                                configurable: true 
+                            });
+                        } catch (e) {
+                            xhr.responseText = '{"response":"block"}';
+                        }
+                        
+                        try {
+                            Object.defineProperty(xhr, 'response', { 
+                                value: '{"response":"block"}', 
+                                writable: false, 
+                                configurable: true 
+                            });
+                        } catch (e) {
+                            xhr.response = '{"response":"block"}';
+                        }
+                        
+                        // Mock readyState as 4 without trying to set it
+                        try {
+                            Object.defineProperty(xhr, 'readyState', { 
+                                value: 4, 
+                                writable: false, 
+                                configurable: true 
+                            });
+                        } catch (e) {
+                            // If we can't override readyState, we'll work around it
+                        }
+                        
+                        // Override response header methods
+                        xhr.getAllResponseHeaders = function() {
+                            return 'content-type: application/json\r\ncontent-length: 20\r\n';
+                        };
+                        
+                        xhr.getResponseHeader = function(name) {
+                            if (!name) return null;
+                            var lowerName = name.toLowerCase();
+                            if (lowerName === 'content-type') return 'application/json';
+                            if (lowerName === 'content-length') return '20';
+                            return null;
+                        };
+                        
+                        // Fire events manually
                         if (xhr.onreadystatechange) {
                             try {
                                 xhr.onreadystatechange();
-                            } catch (e) {}
+                            } catch (e) {
+                                console.log('Error in onreadystatechange:', e);
+                            }
                         }
                         
-                        // Then readyState 3 (loading)
-                        setTimeout(function() {
-                            xhr.readyState = 3;
-                            if (xhr.onreadystatechange) {
-                                try {
-                                    xhr.onreadystatechange();
-                                } catch (e) {}
+                        if (xhr.onload) {
+                            try {
+                                xhr.onload();
+                            } catch (e) {
+                                console.log('Error in onload:', e);
                             }
-                            
-                            // Finally readyState 4 (done) with full response
-                            setTimeout(function() {
-                                xhr.readyState = 4;
-                                xhr.responseText = '{"response":"block"}';
-                                xhr.response = '{"response":"block"}';
-                                
-                                // Override response header methods
-                                xhr.getAllResponseHeaders = function() {
-                                    return 'content-type: application/json\r\ncontent-length: 20\r\n';
-                                };
-                                
-                                xhr.getResponseHeader = function(name) {
-                                    if (!name) return null;
-                                    var lowerName = name.toLowerCase();
-                                    if (lowerName === 'content-type') return 'application/json';
-                                    if (lowerName === 'content-length') return '20';
-                                    return null;
-                                };
-                                
-                                // Fire readystatechange event
-                                if (xhr.onreadystatechange) {
-                                    try {
-                                        xhr.onreadystatechange();
-                                    } catch (e) {}
-                                }
-                                
-                                // Fire load event
-                                if (xhr.onload) {
-                                    try {
-                                        xhr.onload();
-                                    } catch (e) {}
-                                }
-                                
-                                // Fire loadend event if it exists
-                                if (xhr.onloadend) {
-                                    try {
-                                        xhr.onloadend();
-                                    } catch (e) {}
-                                }
-                                
-                            }, 10);
-                        }, 10);
-                    }, 20);
+                        }
+                        
+                        if (xhr.onloadend) {
+                            try {
+                                xhr.onloadend();
+                            } catch (e) {
+                                console.log('Error in onloadend:', e);
+                            }
+                        }
+                        
+                    }, 50);
                     
                     return;
                 }
